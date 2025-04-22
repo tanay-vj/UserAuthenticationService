@@ -1,10 +1,13 @@
 package org.example.userauthenticationservicemarch2025.services;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.JwtParser;
 import io.jsonwebtoken.Jwts;
-import io.jsonwebtoken.security.MacAlgorithm;
 import org.antlr.v4.runtime.misc.Pair;
+import org.example.userauthenticationservicemarch2025.clients.KafkaProducerClient;
+import org.example.userauthenticationservicemarch2025.dtos.EmailDto;
 import org.example.userauthenticationservicemarch2025.exceptions.IncorrectPasswordException;
 import org.example.userauthenticationservicemarch2025.exceptions.UserAlreadyExistsException;
 import org.example.userauthenticationservicemarch2025.exceptions.UserNotFoundException;
@@ -15,7 +18,6 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import javax.crypto.SecretKey;
-import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
@@ -32,6 +34,12 @@ public class AuthService implements IAuthService {
     @Autowired
     private SecretKey secretKey;
 
+    @Autowired
+    private KafkaProducerClient kafkaProducerClient;
+
+    @Autowired
+    private ObjectMapper objectMapper;
+
 
     @Override
     public User signup(String email, String password) {
@@ -43,6 +51,18 @@ public class AuthService implements IAuthService {
         user.setEmailId(email);
 //        user.setPassword(password);
         user.setPassword(bCryptPasswordEncoder.encode(password));
+        EmailDto emailDto = new EmailDto();
+        emailDto.setTo(user.getEmailId());
+        emailDto.setFrom("anuragbatch@gmail.com");
+        emailDto.setBody("Thanks for signing up");
+        emailDto.setSubject("Registeration successfull");
+
+        try {
+            kafkaProducerClient.sendMessage("signup", objectMapper.writeValueAsString(emailDto));
+        } catch (JsonProcessingException ex) {
+            throw new RuntimeException(ex.getMessage());
+        }
+
         return userRepo.save(user);
     }
 
