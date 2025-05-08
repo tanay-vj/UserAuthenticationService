@@ -10,8 +10,9 @@ import java.util.Date;
 @Setter
 @Entity
 public class User extends BaseModel {
-    String emailId;
-    String password;
+    private String emailId;
+    private String password;
+    private Role role;
 
     public User() {
         this.setCreatedAt(new Date());
